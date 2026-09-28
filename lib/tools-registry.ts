@@ -134,7 +134,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     category: 'image',
     badge: 'Popular',
     isFeatured: true,
-    status: 'in-development',
+    status: 'available',
     keywords: ['image', 'compress', 'shrink', 'optimize', 'jpg', 'png', 'webp', 'reduce size'],
     icon: 'image',
   },
