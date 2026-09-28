@@ -38,24 +38,114 @@ export function ImageCompressor() {
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const requestIdRef = useRef<number>(0);
+  const activeMetaUrlRef = useRef<string | null>(null);
+  const activeResultUrlRef = useRef<string | null>(null);
+  const isInitialImageRef = useRef<boolean>(true);
 
-  // Revoke object URLs on cleanup
+  // Clean all active object URLs on unmount
   useEffect(() => {
     return () => {
-      if (meta?.objectUrl) URL.revokeObjectURL(meta.objectUrl);
-      if (result?.objectUrl) URL.revokeObjectURL(result.objectUrl);
+      if (activeMetaUrlRef.current) URL.revokeObjectURL(activeMetaUrlRef.current);
+      if (activeResultUrlRef.current) URL.revokeObjectURL(activeResultUrlRef.current);
     };
-  }, [meta, result]);
+  }, []);
 
   // Clean previous image state
   const resetImageState = useCallback(() => {
-    if (meta?.objectUrl) URL.revokeObjectURL(meta.objectUrl);
-    if (result?.objectUrl) URL.revokeObjectURL(result.objectUrl);
+    requestIdRef.current++;
+    if (activeMetaUrlRef.current) {
+      URL.revokeObjectURL(activeMetaUrlRef.current);
+      activeMetaUrlRef.current = null;
+    }
+    if (activeResultUrlRef.current) {
+      URL.revokeObjectURL(activeResultUrlRef.current);
+      activeResultUrlRef.current = null;
+    }
     setMeta(null);
     setResult(null);
     setErrorMessage(null);
     setIsProcessing(false);
-  }, [meta, result]);
+    isInitialImageRef.current = true;
+  }, []);
+
+  // Check if target format is PNG or JPEG
+  const isTargetPng =
+    format === 'image/png' || (format === 'original' && meta?.type === 'image/png');
+  const isTargetJpeg =
+    format === 'image/jpeg' ||
+    (format === 'original' && (meta?.type === 'image/jpeg' || meta?.type === 'image/jpg'));
+
+  // User input handlers that immediately signal processing state
+  const handleQualityChange = (newQuality: number) => {
+    setQuality(newQuality);
+    setIsProcessing(true);
+  };
+
+  const handleFormatChange = (newFormat: SupportedOutputFormat) => {
+    setFormat(newFormat);
+    setIsProcessing(true);
+  };
+
+  const handleBgColorChange = (newColor: string) => {
+    setBackgroundColor(newColor);
+    setIsProcessing(true);
+  };
+
+  // Reactive debounced compression effect:
+  // Automatically reprocesses whenever quality, format, or background color changes.
+  // Employs a sequence token (requestIdRef) to prevent race conditions from quick user inputs.
+  useEffect(() => {
+    if (!meta) return;
+
+    const thisRequestId = ++requestIdRef.current;
+
+    // Initial load runs immediately; slider dragging and toggle changes are debounced to avoid overloading canvas
+    const delay = isInitialImageRef.current ? 0 : 250;
+    isInitialImageRef.current = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsProcessing(true);
+        const options: CompressionOptions = {
+          quality,
+          format,
+          backgroundColor,
+        };
+
+        const newResult = await compressImage(meta, options);
+
+        // Discard stale result if a newer request was dispatched while this was encoding
+        if (thisRequestId !== requestIdRef.current) {
+          URL.revokeObjectURL(newResult.objectUrl);
+          return;
+        }
+
+        // Revoke the old result URL and assign the new active URL
+        if (activeResultUrlRef.current && activeResultUrlRef.current !== newResult.objectUrl) {
+          URL.revokeObjectURL(activeResultUrlRef.current);
+        }
+        activeResultUrlRef.current = newResult.objectUrl;
+
+        setResult(newResult);
+        setErrorMessage(null);
+      } catch (err) {
+        if (thisRequestId !== requestIdRef.current) {
+          return;
+        }
+        setErrorMessage(err instanceof Error ? err.message : 'Compression failed.');
+        // Retain the last valid result on error
+      } finally {
+        if (thisRequestId === requestIdRef.current) {
+          setIsProcessing(false);
+        }
+      }
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [meta, quality, format, backgroundColor]);
 
   // Handle file selection
   const handleFileProcess = async (file: File) => {
@@ -63,24 +153,16 @@ export function ImageCompressor() {
       resetImageState();
       setIsProcessing(true);
       setErrorMessage(null);
+      isInitialImageRef.current = true;
 
       const imageMeta = await loadImageMeta(file);
+      activeMetaUrlRef.current = imageMeta.objectUrl;
       setMeta(imageMeta);
-
-      // Auto-run initial compression at 75% quality
-      const initialOptions: CompressionOptions = {
-        quality: quality / 100,
-        format,
-        backgroundColor,
-      };
-
-      const compressedResult = await compressImage(imageMeta, initialOptions);
-      setResult(compressedResult);
+      // Changing meta triggers the reactive debounced compression effect
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Failed to process image.');
       setMeta(null);
       setResult(null);
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -116,31 +198,41 @@ export function ImageCompressor() {
     }
   };
 
-  // Run compression with updated settings
+  // Manual trigger for Re-compress button
   const handleCompress = async () => {
     if (!meta) return;
 
-    try {
-      setIsProcessing(true);
-      setErrorMessage(null);
+    const thisRequestId = ++requestIdRef.current;
+    setIsProcessing(true);
+    setErrorMessage(null);
 
+    try {
       const options: CompressionOptions = {
-        quality: quality / 100,
+        quality,
         format,
         backgroundColor,
       };
 
-      // Revoke old result URL before creating new
-      if (result?.objectUrl) {
-        URL.revokeObjectURL(result.objectUrl);
+      const newResult = await compressImage(meta, options);
+
+      if (thisRequestId !== requestIdRef.current) {
+        URL.revokeObjectURL(newResult.objectUrl);
+        return;
       }
 
-      const newResult = await compressImage(meta, options);
+      if (activeResultUrlRef.current && activeResultUrlRef.current !== newResult.objectUrl) {
+        URL.revokeObjectURL(activeResultUrlRef.current);
+      }
+      activeResultUrlRef.current = newResult.objectUrl;
+
       setResult(newResult);
     } catch (err) {
+      if (thisRequestId !== requestIdRef.current) return;
       setErrorMessage(err instanceof Error ? err.message : 'Compression failed.');
     } finally {
-      setIsProcessing(false);
+      if (thisRequestId === requestIdRef.current) {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -156,12 +248,6 @@ export function ImageCompressor() {
       setIsProcessing(false);
     }
   };
-
-  // Check if target format is PNG
-  const isTargetPng =
-    format === 'image/png' || (format === 'original' && meta?.type === 'image/png');
-  const isTargetJpeg =
-    format === 'image/jpeg' || (format === 'original' && (meta?.type === 'image/jpeg' || meta?.type === 'image/jpg'));
 
   return (
     <div className="py-6 sm:py-10">
@@ -350,10 +436,21 @@ export function ImageCompressor() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label htmlFor="quality-slider" className="text-xs font-bold uppercase tracking-wider text-foreground">
-                      Compression Quality: <span className="text-orange-600 dark:text-orange-400">{quality}%</span>
+                      Compression Quality:{' '}
+                      {isTargetPng ? (
+                        <span className="text-muted-foreground font-normal lowercase">(lossless format — n/a)</span>
+                      ) : (
+                        <span className="text-orange-600 dark:text-orange-400">{quality}%</span>
+                      )}
                     </label>
                     <span className="text-xs text-muted-foreground">
-                      {quality >= 85 ? 'High Visual Fidelity' : quality >= 65 ? 'Balanced (Recommended)' : 'Maximum Compression'}
+                      {isTargetPng
+                        ? 'Lossless Deflate'
+                        : quality >= 85
+                        ? 'High Visual Fidelity'
+                        : quality >= 65
+                        ? 'Balanced (Recommended)'
+                        : 'Maximum Compression'}
                     </span>
                   </div>
 
@@ -364,8 +461,13 @@ export function ImageCompressor() {
                     max="100"
                     step="1"
                     value={quality}
-                    onChange={(e) => setQuality(parseInt(e.target.value, 10))}
-                    className="w-full h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    disabled={isTargetPng}
+                    onChange={(e) => handleQualityChange(parseInt(e.target.value, 10))}
+                    className={`w-full h-2 rounded-lg appearance-none accent-orange-500 ${
+                      isTargetPng
+                        ? 'opacity-40 cursor-not-allowed bg-zinc-200 dark:bg-zinc-800'
+                        : 'cursor-pointer bg-zinc-200 dark:bg-zinc-800'
+                    }`}
                     aria-label="Compression quality slider"
                   />
 
@@ -380,11 +482,14 @@ export function ImageCompressor() {
                       <button
                         key={preset.val}
                         type="button"
-                        onClick={() => setQuality(preset.val)}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                          quality === preset.val
-                            ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-2xs'
-                            : 'bg-zinc-100 dark:bg-zinc-800/80 text-muted-foreground hover:text-foreground'
+                        disabled={isTargetPng}
+                        onClick={() => handleQualityChange(preset.val)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                          isTargetPng
+                            ? 'opacity-40 cursor-not-allowed bg-zinc-100 dark:bg-zinc-800/60 text-muted-foreground'
+                            : quality === preset.val
+                            ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-2xs cursor-pointer'
+                            : 'bg-zinc-100 dark:bg-zinc-800/80 text-muted-foreground hover:text-foreground cursor-pointer'
                         }`}
                       >
                         {preset.label}
@@ -393,8 +498,11 @@ export function ImageCompressor() {
                   </div>
 
                   {isTargetPng && (
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs">
-                      <strong>PNG Format Notice:</strong> PNG is a lossless format (deflate). The quality slider primarily affects lossy formats like WebP and JPEG. For significant file reductions, choose <strong>WebP</strong>.
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs leading-relaxed flex items-start gap-2">
+                      <AlertCircleIcon size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>PNG Format Notice:</strong> PNG uses lossless Deflate compression, so lossy quality adjustments do not apply. For significant file reductions with transparency support, switch to <strong>WebP</strong>.
+                      </div>
                     </div>
                   )}
                 </div>
@@ -418,7 +526,7 @@ export function ImageCompressor() {
                           key={fmt.id}
                           type="button"
                           id={`format-${fmt.name.toLowerCase()}`}
-                          onClick={() => setFormat(fmt.id as SupportedOutputFormat)}
+                          onClick={() => handleFormatChange(fmt.id as SupportedOutputFormat)}
                           className={`p-2.5 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer ${
                             isSelected
                               ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-950 shadow-2xs ring-2 ring-orange-500/50'
@@ -443,7 +551,7 @@ export function ImageCompressor() {
                           <button
                             key={color}
                             type="button"
-                            onClick={() => setBackgroundColor(color)}
+                            onClick={() => handleBgColorChange(color)}
                             className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer ${
                               backgroundColor === color ? 'border-orange-500 scale-110' : 'border-border'
                             }`}
@@ -461,7 +569,7 @@ export function ImageCompressor() {
                     id="apply-compress-btn"
                     onClick={handleCompress}
                     disabled={isProcessing}
-                    className="w-full py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl font-semibold text-xs sm:text-sm bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isProcessing ? (
                       <>
@@ -504,7 +612,7 @@ export function ImageCompressor() {
                       </span>
                     ) : (
                       <span>
-                        Output is <strong>{result.formattedSize}</strong> ({Math.abs(result.savingsPercentage)}% larger than original {meta.formattedSize}). Try reducing quality or choosing WebP.
+                        Output is <strong>{result.formattedSize}</strong> ({result.savingsPercentage}% larger than original {meta.formattedSize}). Try reducing quality or choosing WebP.
                       </span>
                     )}
                   </div>
@@ -512,7 +620,7 @@ export function ImageCompressor() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant={result.isSmaller ? 'success' : 'amber'}>
-                    {result.isSmaller ? `-${result.savingsPercentage}%` : `+${Math.abs(result.savingsPercentage)}%`}
+                    {result.isSmaller ? `-${result.savingsPercentage}%` : `+${result.savingsPercentage}%`}
                   </Badge>
 
                   {/* Primary Download Action */}
@@ -544,6 +652,7 @@ export function ImageCompressor() {
                 <div className="p-4 bg-zinc-100/50 dark:bg-zinc-950/50 flex-1 flex items-center justify-center min-h-[260px] sm:min-h-[320px] max-h-[460px] overflow-hidden">
                   <div className="relative w-full h-full min-h-[260px] flex items-center justify-center">
                     <Image
+                      id="original-preview-img"
                       src={meta.objectUrl}
                       alt={`Original image ${meta.name}`}
                       width={meta.width}
@@ -574,9 +683,17 @@ export function ImageCompressor() {
               {/* 2. Compressed Image Card */}
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden flex flex-col">
                 <div className="px-4 py-3 border-b border-border bg-zinc-50/80 dark:bg-zinc-900/80 flex items-center justify-between text-xs">
-                  <span className="font-bold tracking-wider uppercase text-foreground">
-                    Compressed Output
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold tracking-wider uppercase text-foreground">
+                      Compressed Output
+                    </span>
+                    {isProcessing && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[11px] font-medium border border-orange-500/20 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                        Updating...
+                      </span>
+                    )}
+                  </div>
                   {result && (
                     <Badge variant={result.isSmaller ? 'success' : 'amber'}>
                       {result.formattedSize}
@@ -584,11 +701,13 @@ export function ImageCompressor() {
                   )}
                 </div>
 
-                {/* Preview Frame */}
-                <div className="p-4 bg-zinc-100/50 dark:bg-zinc-950/50 flex-1 flex items-center justify-center min-h-[260px] sm:min-h-[320px] max-h-[460px] overflow-hidden">
+                {/* Preview Frame with Live Updating Overlay */}
+                <div className="p-4 bg-zinc-100/50 dark:bg-zinc-950/50 flex-1 flex items-center justify-center min-h-[260px] sm:min-h-[320px] max-h-[460px] overflow-hidden relative">
                   {result ? (
                     <div className="relative w-full h-full min-h-[260px] flex items-center justify-center">
                       <Image
+                        id="compressed-preview-img"
+                        key={result.objectUrl}
                         src={result.objectUrl}
                         alt="Compressed output preview"
                         width={result.width}
@@ -596,10 +715,24 @@ export function ImageCompressor() {
                         unoptimized
                         className="max-h-[360px] w-auto h-auto object-contain rounded-lg shadow-2xs"
                       />
+
+                      {/* Reprocessing overlay keeps last valid preview visible while clearly indicating work in flight */}
+                      {isProcessing && (
+                        <div
+                          id="compressed-preview-updating"
+                          className="absolute inset-0 bg-background/60 backdrop-blur-[2px] rounded-lg flex items-center justify-center z-10 transition-all animate-in fade-in duration-150"
+                        >
+                          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-card border border-border shadow-lg text-xs font-semibold text-foreground">
+                            <span className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                            <span>Updating preview...</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="text-center text-muted-foreground text-xs p-8">
-                      Processing compression...
+                    <div className="text-center text-muted-foreground text-xs p-8 flex flex-col items-center gap-2">
+                      <span className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                      <span>Generating compressed preview...</span>
                     </div>
                   )}
                 </div>
@@ -618,7 +751,7 @@ export function ImageCompressor() {
                     <div className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/60">
                       <span className="text-[11px] text-muted-foreground block">Reduction</span>
                       <span className={`font-semibold ${result.isSmaller ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                        {result.savingsPercentage}%
+                        {result.isSmaller ? `-${result.savingsPercentage}%` : `+${result.savingsPercentage}%`}
                       </span>
                     </div>
                   </div>

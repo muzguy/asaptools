@@ -14,7 +14,7 @@ export interface ImageFileMeta {
 export type SupportedOutputFormat = 'original' | 'image/jpeg' | 'image/webp' | 'image/png';
 
 export interface CompressionOptions {
-  quality: number; // 0.01 to 1.0 (e.g. 0.8)
+  quality: number; // 0.01 to 1.0 or 1 to 100
   format: SupportedOutputFormat;
   backgroundColor?: string; // fallback color for JPEG transparency, e.g. '#ffffff'
 }
@@ -46,6 +46,35 @@ export const SUPPORTED_INPUT_TYPES = new Set([
   'image/gif',
 ]);
 
+/**
+ * Normalizes quality to 0.01 - 1.0 range whether passed as 0-100 or 0-1.
+ */
+export function normalizeQuality(quality: number): number {
+  let q = quality;
+  if (q > 1) {
+    q = q / 100;
+  }
+  return Math.max(0.01, Math.min(1.0, q));
+}
+
+/**
+ * Checks whether the current browser's canvas encoder actually supports the given MIME type.
+ * HTML5 Canvas specification dictates that unsupported types silently fall back to image/png.
+ */
+export function isMimeSupportedByBrowser(mimeType: string): boolean {
+  if (typeof document === 'undefined') return true;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const dataUrl = canvas.toDataURL(mimeType);
+    const normalizedTarget = mimeType === 'image/jpg' ? 'image/jpeg' : mimeType.toLowerCase();
+    return dataUrl.startsWith(`data:${normalizedTarget}`);
+  } catch {
+    return false;
+  }
+}
+
 export function formatByteSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -63,7 +92,8 @@ export function getFilenameWithoutExtension(filename: string): string {
 }
 
 export function getMimeExtension(mimeType: string): string {
-  switch (mimeType) {
+  const normalized = mimeType.toLowerCase();
+  switch (normalized) {
     case 'image/jpeg':
     case 'image/jpg':
       return 'jpg';
@@ -100,8 +130,18 @@ export function loadImageMeta(file: File): Promise<ImageFileMeta> {
     }
 
     // Check mime type or extension
-    const mime = file.type.toLowerCase();
     const ext = getFileExtension(file.name);
+    let mime = file.type.toLowerCase();
+    if (!mime && ext) {
+      if (ext === 'jpg' || ext === 'jpeg') mime = 'image/jpeg';
+      else if (ext === 'png') mime = 'image/png';
+      else if (ext === 'webp') mime = 'image/webp';
+      else if (ext === 'avif') mime = 'image/avif';
+      else if (ext === 'bmp') mime = 'image/bmp';
+      else if (ext === 'gif') mime = 'image/gif';
+    }
+    if (mime === 'image/jpg') mime = 'image/jpeg';
+
     const isSupportedMime = SUPPORTED_INPUT_TYPES.has(mime);
     const isSupportedExt = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'bmp', 'gif'].includes(ext);
 
@@ -163,12 +203,33 @@ export function loadImageMeta(file: File): Promise<ImageFileMeta> {
 
 /**
  * Performs client-side image compression using standard HTML5 Canvas.
+ * Always encodes from the original image (meta.objectUrl).
+ * Strictly validates that the browser's encoder produced the requested MIME type.
  */
 export function compressImage(
   meta: ImageFileMeta,
   options: CompressionOptions
 ): Promise<CompressionResult> {
   return new Promise((resolve, reject) => {
+    // 1. Determine target MIME type
+    let targetMime: string;
+    if (options.format === 'original') {
+      targetMime = meta.type === 'image/jpg' ? 'image/jpeg' : meta.type;
+    } else {
+      targetMime = options.format;
+    }
+
+    const normalizedTarget = (targetMime === 'image/jpg' ? 'image/jpeg' : targetMime).toLowerCase();
+
+    // 2. Pre-verify browser support for target format
+    if (!isMimeSupportedByBrowser(normalizedTarget)) {
+      return reject(
+        new Error(
+          `Your browser does not support encoding images to format "${targetMime}". Please select WebP, JPEG, or PNG instead.`
+        )
+      );
+    }
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -180,25 +241,12 @@ export function compressImage(
 
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          return reject(new Error('Could not initialize canvas context for compression.'));
+          return reject(new Error('Could not initialize canvas 2D context for compression.'));
         }
 
-        // Determine target MIME type
-        let targetMime: string;
-        if (options.format === 'original') {
-          if (['image/jpeg', 'image/webp', 'image/png'].includes(meta.type)) {
-            targetMime = meta.type;
-          } else {
-            // Default to WebP for modern fallback if original format was BMP, GIF, etc.
-            targetMime = 'image/webp';
-          }
-        } else {
-          targetMime = options.format;
-        }
-
-        // Transparency handling for JPEG:
-        // JPEG does not support transparency. If converting to JPEG, fill background with user selected color
-        if (targetMime === 'image/jpeg') {
+        // Transparency handling:
+        // JPEG does not support alpha channels. Fill canvas with chosen background color to prevent black transparency artifacts.
+        if (normalizedTarget === 'image/jpeg') {
           ctx.fillStyle = options.backgroundColor || '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         } else {
@@ -206,33 +254,44 @@ export function compressImage(
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Draw image onto canvas
+        // Draw original image onto canvas
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Quality parameter (clamped 0.01 - 1.0)
-        const quality = Math.max(0.01, Math.min(1.0, options.quality));
+        // Quality parameter (0.01 - 1.0)
+        const quality = normalizeQuality(options.quality);
 
         canvas.toBlob(
           (blob) => {
             if (!blob) {
               return reject(
                 new Error(
-                  `Failed to compress image into format ${targetMime}. Your browser may not support this output format.`
+                  `Failed to encode image to format "${targetMime}". The browser encoder failed or is unavailable.`
+                )
+              );
+            }
+
+            // 3. Post-verification of returned MIME type:
+            // Detect silent fallback where browser returns 'image/png' when another format was requested
+            const normalizedActual = (blob.type === 'image/jpg' ? 'image/jpeg' : blob.type).toLowerCase();
+            if (normalizedActual !== normalizedTarget) {
+              return reject(
+                new Error(
+                  `Browser encoder fallback detected: requested "${targetMime}" but browser generated "${blob.type}". Encoder not genuinely supported.`
                 )
               );
             }
 
             const outputObjectUrl = URL.createObjectURL(blob);
-            const actualMime = blob.type || targetMime;
-            const extension = getMimeExtension(actualMime);
+            const extension = getMimeExtension(normalizedActual);
             const baseName = getFilenameWithoutExtension(meta.name);
             const downloadFilename = `${baseName}-compressed.${extension}`;
 
             const savingsBytes = meta.size - blob.size;
-            const savingsPercentage = parseFloat(
-              (((meta.size - blob.size) / meta.size) * 100).toFixed(1)
-            );
             const isSmaller = blob.size < meta.size;
+            const diffBytes = Math.abs(savingsBytes);
+            const savingsPercentage = meta.size > 0
+              ? parseFloat(((diffBytes / meta.size) * 100).toFixed(1))
+              : 0;
 
             resolve({
               blob,
@@ -241,7 +300,7 @@ export function compressImage(
               formattedSize: formatByteSize(blob.size),
               width: canvas.width,
               height: canvas.height,
-              type: actualMime,
+              type: normalizedActual,
               extension,
               savingsBytes,
               savingsPercentage,
@@ -249,7 +308,7 @@ export function compressImage(
               downloadFilename,
             });
           },
-          targetMime,
+          normalizedTarget,
           quality
         );
       } catch (err) {
@@ -258,9 +317,10 @@ export function compressImage(
     };
 
     img.onerror = () => {
-      reject(new Error('Failed to load image into canvas for compression.'));
+      reject(new Error('Failed to load source image into canvas for compression.'));
     };
 
+    // Always source from the original image URL
     img.src = meta.objectUrl;
   });
 }
