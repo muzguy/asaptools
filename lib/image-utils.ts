@@ -54,6 +54,29 @@ export interface ResizeResult {
   downloadFilename: string;
 }
 
+export type TargetConvertFormat = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/jpg';
+
+export interface ConvertOptions {
+  format: TargetConvertFormat;
+  quality?: number; // 0.01 to 1.0 or 1 to 100
+  backgroundColor?: string; // fallback color for JPEG transparency, e.g. '#ffffff'
+}
+
+export interface ConvertResult {
+  blob: Blob;
+  objectUrl: string;
+  size: number;
+  formattedSize: string;
+  width: number;
+  height: number;
+  type: string;
+  extension: string;
+  savingsBytes: number;
+  savingsPercentage: number;
+  isSmaller: boolean;
+  downloadFilename: string;
+}
+
 export const MAX_RESIZE_DIMENSION = 10000;
 export const MIN_RESIZE_DIMENSION = 1;
 
@@ -136,6 +159,34 @@ export function getMimeExtension(mimeType: string): string {
 }
 
 /**
+ * Fast sampling to detect whether an image contains any transparent pixels.
+ */
+export function detectImageAlpha(img: HTMLImageElement, width: number, height: number): boolean {
+  if (typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    const sw = Math.min(100, width);
+    const sh = Math.min(100, height);
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.clearRect(0, 0, sw, sh);
+    ctx.drawImage(img, 0, 0, sw, sh);
+    const imgData = ctx.getImageData(0, 0, sw, sh);
+    const data = imgData.data;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 250) {
+        return true;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Validates and loads image file metadata including natural dimensions and object URL.
  */
 export function loadImageMeta(file: File): Promise<ImageFileMeta> {
@@ -198,16 +249,22 @@ export function loadImageMeta(file: File): Promise<ImageFileMeta> {
           ? `${ratioWidth}:${ratioHeight}`
           : `${(width / height).toFixed(2)}:1`;
 
+      const resolvedType = mime || `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+      const hasAlpha = ['image/png', 'image/webp', 'image/gif', 'image/avif'].includes(resolvedType)
+        ? detectImageAlpha(img, width, height)
+        : false;
+
       resolve({
         file,
         name: file.name,
         size: file.size,
         formattedSize: formatByteSize(file.size),
-        type: mime || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        type: resolvedType,
         width,
         height,
         aspectRatio,
         objectUrl,
+        hasAlpha,
       });
     };
 
@@ -529,6 +586,199 @@ export function resizeImage(
 
     // Always source from the original image URL
     img.src = meta.objectUrl;
+  });
+}
+
+/**
+ * Performs client-side image format conversion using HTML5 Canvas.
+ * Strictly checks MIME type support, detects silent browser fallback to PNG,
+ * and properly fills background for JPEG if transparency is present.
+ */
+export function convertImage(
+  meta: ImageFileMeta,
+  options: ConvertOptions
+): Promise<ConvertResult> {
+  return new Promise((resolve, reject) => {
+    const targetMime = options.format;
+    const normalizedTarget = (targetMime === 'image/jpg' ? 'image/jpeg' : targetMime).toLowerCase();
+
+    // 1. Pre-verify browser support
+    if (!isMimeSupportedByBrowser(normalizedTarget)) {
+      return reject(
+        new Error(
+          `Your browser does not support encoding images to format "${targetMime}". Please select WebP, JPEG, or PNG instead.`
+        )
+      );
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = meta.width;
+        canvas.height = meta.height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not initialize canvas 2D context for conversion.'));
+        }
+
+        // Transparency handling:
+        // JPEG does not support alpha channels. Fill canvas with chosen background color to prevent black transparency artifacts.
+        if (normalizedTarget === 'image/jpeg') {
+          ctx.fillStyle = options.backgroundColor || '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+          // Clear canvas for PNG and WebP to preserve alpha channels
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw image at native original dimensions
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Quality parameter (0.01 - 1.0, default 0.92 for WebP/JPEG)
+        const quality = normalizeQuality(options.quality ?? 0.92);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              return reject(
+                new Error(
+                  `Failed to convert image to format "${targetMime}". The browser encoder failed or is unavailable.`
+                )
+              );
+            }
+
+            // Post-verification of returned MIME type:
+            // Detect silent fallback where browser returns 'image/png' when another format was requested
+            const normalizedActual = (blob.type === 'image/jpg' ? 'image/jpeg' : blob.type).toLowerCase();
+            if (normalizedActual !== normalizedTarget) {
+              return reject(
+                new Error(
+                  `Browser encoder fallback detected: requested "${targetMime}" but browser generated "${blob.type}". Encoder not genuinely supported.`
+                )
+              );
+            }
+
+            const outputObjectUrl = URL.createObjectURL(blob);
+            const extension = getMimeExtension(normalizedActual);
+            const baseName = getFilenameWithoutExtension(meta.name);
+            const downloadFilename = `${baseName}.${extension}`;
+
+            const savingsBytes = meta.size - blob.size;
+            const isSmaller = blob.size < meta.size;
+            const diffBytes = Math.abs(savingsBytes);
+            const savingsPercentage = meta.size > 0
+              ? parseFloat(((diffBytes / meta.size) * 100).toFixed(1))
+              : 0;
+
+            resolve({
+              blob,
+              objectUrl: outputObjectUrl,
+              size: blob.size,
+              formattedSize: formatByteSize(blob.size),
+              width: canvas.width,
+              height: canvas.height,
+              type: normalizedActual,
+              extension,
+              savingsBytes,
+              savingsPercentage,
+              isSmaller,
+              downloadFilename,
+            });
+          },
+          normalizedTarget,
+          quality
+        );
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error('Unexpected error during canvas conversion.'));
+      }
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load source image into canvas for conversion.'));
+    };
+
+    // Always source from the original image URL
+    img.src = meta.objectUrl;
+  });
+}
+
+/**
+ * Creates a transparent PNG sample image with alpha channels for testing transparency conversion.
+ */
+export function createSampleTransparentPng(): Promise<File> {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1000;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d')!;
+
+    // Transparent background
+    ctx.clearRect(0, 0, 1000, 700);
+
+    // Glowing circle in background with alpha
+    const radGrad = ctx.createRadialGradient(500, 350, 50, 500, 350, 300);
+    radGrad.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+    radGrad.addColorStop(1, 'rgba(59, 130, 246, 0)');
+    ctx.fillStyle = radGrad;
+    ctx.fillRect(0, 0, 1000, 700);
+
+    // Modern card shape with translucent fill
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.roundRect(200, 150, 600, 400, 24);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+
+    // Colorful badge pill
+    ctx.fillStyle = '#2563eb';
+    ctx.beginPath();
+    ctx.roundRect(400, 210, 200, 36, 18);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TRANSPARENT PNG', 500, 234);
+
+    // Title
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillText('ASAPTools Converter', 500, 320);
+
+    ctx.fillStyle = '#64748b';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('Alpha Channel & Transparency Sample', 500, 365);
+
+    // Floating badges with varied alpha
+    ctx.fillStyle = 'rgba(37, 99, 235, 0.15)';
+    ctx.beginPath();
+    ctx.roundRect(280, 420, 200, 50, 12);
+    ctx.fill();
+    ctx.fillStyle = '#1d4ed8';
+    ctx.font = '600 15px sans-serif';
+    ctx.fillText('Preserves Alpha in WebP', 380, 451);
+
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.15)';
+    ctx.beginPath();
+    ctx.roundRect(520, 420, 200, 50, 12);
+    ctx.fill();
+    ctx.fillStyle = '#d97706';
+    ctx.font = '600 15px sans-serif';
+    ctx.fillText('Fills Background in JPEG', 620, 451);
+
+    canvas.toBlob(
+      (blob) => {
+        const file = new File([blob!], 'asaptools-transparent-sample.png', { type: 'image/png' });
+        resolve(file);
+      },
+      'image/png'
+    );
   });
 }
 
