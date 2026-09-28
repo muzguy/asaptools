@@ -45,11 +45,6 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'ASAPTools' }],
   creator: 'ASAPTools',
-  icons: {
-    icon: '/branding/asaptools-icon.png',
-    shortcut: '/branding/asaptools-icon.png',
-    apple: '/branding/asaptools-icon.png',
-  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
