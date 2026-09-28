@@ -139,6 +139,18 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     icon: 'image',
   },
   {
+    id: 'image-resizer',
+    name: 'Image Resizer',
+    slug: '/tools/image-resizer',
+    description: 'Resize images to exact pixel dimensions, scale by percentage, and lock aspect ratios.',
+    category: 'image',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: ['image', 'resize', 'dimensions', 'aspect ratio', 'pixels', 'scale', 'social media', 'jpg', 'png', 'webp'],
+    icon: 'image',
+  },
+  {
     id: 'image-converter',
     name: 'Image Format Converter',
     slug: '/tools/image-converter',

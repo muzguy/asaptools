@@ -34,6 +34,29 @@ export interface CompressionResult {
   downloadFilename: string;
 }
 
+export interface ResizeOptions {
+  width: number;
+  height: number;
+  format: SupportedOutputFormat;
+  quality?: number; // 0.01 to 1.0 or 1 to 100
+  backgroundColor?: string; // fallback color for JPEG transparency, e.g. '#ffffff'
+}
+
+export interface ResizeResult {
+  blob: Blob;
+  objectUrl: string;
+  size: number;
+  formattedSize: string;
+  width: number;
+  height: number;
+  type: string;
+  extension: string;
+  downloadFilename: string;
+}
+
+export const MAX_RESIZE_DIMENSION = 10000;
+export const MIN_RESIZE_DIMENSION = 1;
+
 export const MAX_IMAGE_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 export const SUPPORTED_INPUT_TYPES = new Set([
@@ -318,6 +341,190 @@ export function compressImage(
 
     img.onerror = () => {
       reject(new Error('Failed to load source image into canvas for compression.'));
+    };
+
+    // Always source from the original image URL
+    img.src = meta.objectUrl;
+  });
+}
+
+/**
+ * Validates dimensions against zero, negative, non-finite, and browser-unsafe limits.
+ */
+export function validateResizeDimensions(width: number, height: number): { valid: boolean; error?: string } {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    return { valid: false, error: 'Width and height must be valid numbers.' };
+  }
+  const roundedW = Math.round(width);
+  const roundedH = Math.round(height);
+  if (roundedW < MIN_RESIZE_DIMENSION || roundedH < MIN_RESIZE_DIMENSION) {
+    return { valid: false, error: 'Dimensions must be at least 1 pixel.' };
+  }
+  if (roundedW > MAX_RESIZE_DIMENSION || roundedH > MAX_RESIZE_DIMENSION) {
+    return {
+      valid: false,
+      error: `Dimensions cannot exceed ${MAX_RESIZE_DIMENSION}px to prevent browser memory issues.`,
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Calculates matching width or height to preserve the original image's aspect ratio.
+ */
+export function calculateAspectRatioDimension(
+  changedDim: 'width' | 'height',
+  newValue: number,
+  originalWidth: number,
+  originalHeight: number
+): { width: number; height: number } {
+  if (originalWidth <= 0 || originalHeight <= 0) {
+    return { width: Math.max(1, Math.round(newValue)), height: Math.max(1, Math.round(newValue)) };
+  }
+  const ratio = originalWidth / originalHeight;
+  if (changedDim === 'width') {
+    const calculatedHeight = Math.max(1, Math.round(newValue / ratio));
+    return { width: Math.max(1, Math.round(newValue)), height: calculatedHeight };
+  } else {
+    const calculatedWidth = Math.max(1, Math.round(newValue * ratio));
+    return { width: calculatedWidth, height: Math.max(1, Math.round(newValue)) };
+  }
+}
+
+/**
+ * Scales width and height by a given percentage based on original dimensions.
+ */
+export function scaleDimensionsByPercentage(
+  originalWidth: number,
+  originalHeight: number,
+  percentage: number
+): { width: number; height: number } {
+  const p = Math.max(1, percentage) / 100;
+  return {
+    width: Math.max(1, Math.round(originalWidth * p)),
+    height: Math.max(1, Math.round(originalHeight * p)),
+  };
+}
+
+/**
+ * Performs client-side image resizing using HTML5 Canvas with high-quality bicubic smoothing.
+ * Strictly checks MIME type support and prevents silent browser fallback to PNG.
+ */
+export function resizeImage(
+  meta: ImageFileMeta,
+  options: ResizeOptions
+): Promise<ResizeResult> {
+  return new Promise((resolve, reject) => {
+    // 1. Validate target dimensions
+    const validation = validateResizeDimensions(options.width, options.height);
+    if (!validation.valid) {
+      return reject(new Error(validation.error || 'Invalid dimensions provided for resizing.'));
+    }
+
+    const targetWidth = Math.round(options.width);
+    const targetHeight = Math.round(options.height);
+
+    // 2. Determine target MIME type
+    let targetMime: string;
+    if (options.format === 'original') {
+      targetMime = meta.type === 'image/jpg' ? 'image/jpeg' : meta.type;
+    } else {
+      targetMime = options.format;
+    }
+
+    const normalizedTarget = (targetMime === 'image/jpg' ? 'image/jpeg' : targetMime).toLowerCase();
+
+    // 3. Pre-verify browser support for target format
+    if (!isMimeSupportedByBrowser(normalizedTarget)) {
+      return reject(
+        new Error(
+          `Your browser does not support encoding images to format "${targetMime}". Please select WebP, JPEG, or PNG instead.`
+        )
+      );
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          return reject(new Error('Could not initialize canvas 2D context for resizing.'));
+        }
+
+        // Enable high-quality smoothing for downscaling and upscaling
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        // Transparency handling:
+        // JPEG does not support alpha channels. Fill canvas with chosen background color to prevent black transparency artifacts.
+        if (normalizedTarget === 'image/jpeg') {
+          ctx.fillStyle = options.backgroundColor || '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+          // Clear canvas for PNG and WebP to preserve alpha channels
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw resized image onto canvas
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Quality parameter (0.01 - 1.0, default 0.92 for WebP/JPEG)
+        const quality = normalizeQuality(options.quality ?? 0.92);
+
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              return reject(
+                new Error(
+                  `Failed to encode resized image to format "${targetMime}". The browser encoder failed or is unavailable.`
+                )
+              );
+            }
+
+            // Post-verification of returned MIME type:
+            // Detect silent fallback where browser returns 'image/png' when another format was requested
+            const normalizedActual = (blob.type === 'image/jpg' ? 'image/jpeg' : blob.type).toLowerCase();
+            if (normalizedActual !== normalizedTarget) {
+              return reject(
+                new Error(
+                  `Browser encoder fallback detected: requested "${targetMime}" but browser generated "${blob.type}". Encoder not genuinely supported.`
+                )
+              );
+            }
+
+            const outputObjectUrl = URL.createObjectURL(blob);
+            const extension = getMimeExtension(normalizedActual);
+            const baseName = getFilenameWithoutExtension(meta.name);
+            const downloadFilename = `${baseName}-${targetWidth}x${targetHeight}.${extension}`;
+
+            resolve({
+              blob,
+              objectUrl: outputObjectUrl,
+              size: blob.size,
+              formattedSize: formatByteSize(blob.size),
+              width: targetWidth,
+              height: targetHeight,
+              type: normalizedActual,
+              extension,
+              downloadFilename,
+            });
+          },
+          normalizedTarget,
+          quality
+        );
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error('Unexpected error during canvas resizing.'));
+      }
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load source image into canvas for resizing.'));
     };
 
     // Always source from the original image URL
