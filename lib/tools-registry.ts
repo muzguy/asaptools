@@ -211,6 +211,18 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     icon: 'pdfCompress',
   },
   {
+    id: 'word-to-pdf',
+    name: 'Word to PDF',
+    slug: '/tools/word-to-pdf',
+    description: 'Convert Word documents (.docx, .doc) to high-fidelity PDF files preserving fonts, tables, and margins.',
+    category: 'pdf',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: ['word to pdf', 'convert docx to pdf', 'doc to pdf', 'docx to pdf converter', 'office to pdf', 'microsoft word to pdf'],
+    icon: 'wordToPdf',
+  },
+  {
     id: 'percentage-calculator',
     name: 'Percentage Calculator',
     slug: '/tools/percentage-calculator',
