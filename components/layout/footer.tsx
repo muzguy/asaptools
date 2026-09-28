@@ -55,24 +55,24 @@ export function Footer() {
             </h3>
             <ul className="space-y-2 text-xs text-muted-foreground">
               <li>
-                <a href="#tools" className="hover:text-foreground transition-colors">
+                <Link href="/#tools" className="hover:text-foreground transition-colors">
                   All Tools
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#categories" className="hover:text-foreground transition-colors">
+                <Link href="/#categories" className="hover:text-foreground transition-colors">
                   Categories
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#ai-vision" className="hover:text-foreground transition-colors">
+                <Link href="/#ai-vision" className="hover:text-foreground transition-colors">
                   AI Vision
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#tool-search" className="hover:text-foreground transition-colors">
+                <Link href="/#tool-search" className="hover:text-foreground transition-colors">
                   Tool Index
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
@@ -84,19 +84,19 @@ export function Footer() {
             </h3>
             <ul className="space-y-2 text-xs text-muted-foreground">
               <li>
-                <a href="#why-asap" className="hover:text-foreground transition-colors">
+                <Link href="/#why-asap" className="hover:text-foreground transition-colors">
                   About ASAPTools
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#why-asap" className="hover:text-foreground transition-colors">
+                <Link href="/#why-asap" className="hover:text-foreground transition-colors">
                   Privacy
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#why-asap" className="hover:text-foreground transition-colors">
+                <Link href="/#why-asap" className="hover:text-foreground transition-colors">
                   File Handling
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

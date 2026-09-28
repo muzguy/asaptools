@@ -62,7 +62,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     category: 'developer',
     badge: 'Popular',
     isFeatured: true,
-    status: 'in-development',
+    status: 'available',
     keywords: ['json', 'formatter', 'beautify', 'validator', 'lint', 'minify', 'parse'],
     icon: 'code',
   },

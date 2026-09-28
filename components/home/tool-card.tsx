@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { ToolItem } from '@/lib/tools-registry';
 import { renderToolIcon } from '@/components/ui/icons';
 import { Badge } from '@/components/ui/badge';
@@ -13,16 +14,8 @@ interface ToolCardProps {
 export function ToolCard({ tool, onSelect }: ToolCardProps) {
   const isAvailable = tool.status === 'available';
 
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect?.(tool)}
-      className={`group relative flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 text-left bg-card text-card-foreground outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer touch-manipulation w-full ${
-        isAvailable
-          ? 'border-border hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5'
-          : 'border-border/80 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md'
-      }`}
-    >
+  const cardContent = (
+    <>
       <div className="w-full">
         {/* Header: Icon & Badges */}
         <div className="flex items-start justify-between gap-3 mb-3.5">
@@ -34,7 +27,11 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
             {tool.badge === 'Popular' && (
               <Badge variant="brand">Popular</Badge>
             )}
-            {!isAvailable && (
+            {isAvailable ? (
+              <Badge variant="brand" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                Live
+              </Badge>
+            ) : (
               <Badge variant="muted">Phase 2</Badge>
             )}
           </div>
@@ -60,6 +57,30 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
           {isAvailable ? 'Launch tool →' : 'Roadmap specs →'}
         </span>
       </div>
+    </>
+  );
+
+  const sharedClassName = `group relative flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 text-left bg-card text-card-foreground outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer touch-manipulation w-full ${
+    isAvailable
+      ? 'border-border hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5'
+      : 'border-border/80 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md'
+  }`;
+
+  if (isAvailable) {
+    return (
+      <Link href={tool.slug} className={sharedClassName}>
+        {cardContent}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.(tool)}
+      className={sharedClassName}
+    >
+      {cardContent}
     </button>
   );
 }

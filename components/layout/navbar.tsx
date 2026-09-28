@@ -36,25 +36,25 @@ export function Navbar() {
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-muted-foreground">
           <Link
-            href="#tools"
+            href="/#tools"
             className="hover:text-foreground transition-colors hover:underline underline-offset-4 decoration-orange-500/50"
           >
             All Tools
           </Link>
           <Link
-            href="#categories"
+            href="/#categories"
             className="hover:text-foreground transition-colors hover:underline underline-offset-4 decoration-orange-500/50"
           >
             Categories
           </Link>
           <Link
-            href="#ai-vision"
+            href="/#ai-vision"
             className="hover:text-foreground transition-colors hover:underline underline-offset-4 decoration-orange-500/50"
           >
             AI Vision
           </Link>
           <Link
-            href="#why-asap"
+            href="/#why-asap"
             className="hover:text-foreground transition-colors hover:underline underline-offset-4 decoration-orange-500/50"
           >
             Why ASAPTools
@@ -63,8 +63,8 @@ export function Navbar() {
 
         {/* Right side Actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          <a
-            href="#tool-search"
+          <Link
+            href="/#tool-search"
             className="hidden sm:inline-flex items-center gap-2 text-xs font-medium text-muted-foreground bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800/80 dark:hover:bg-zinc-700/80 border border-border px-3 py-1.5 rounded-xl transition-colors"
           >
             <SearchIcon size={14} className="text-zinc-500 dark:text-zinc-400" />
@@ -72,7 +72,7 @@ export function Navbar() {
             <kbd className="hidden lg:inline-flex items-center text-[10px] px-1.5 py-0.5 rounded bg-white dark:bg-zinc-900 border border-border font-mono text-zinc-500">
               /
             </kbd>
-          </a>
+          </Link>
 
           {/* Theme Switcher Toggle */}
           <ThemeToggle />

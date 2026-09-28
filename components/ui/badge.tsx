@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeVariant = 'brand' | 'muted' | 'outline' | 'amber' | 'neutral';
+export type BadgeVariant = 'brand' | 'muted' | 'outline' | 'amber' | 'neutral' | 'success' | 'error';
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -28,6 +28,10 @@ export function Badge({
       'bg-transparent text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800',
     neutral:
       'bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700/60 font-medium',
+    success:
+      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 font-medium',
+    error:
+      'bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 font-medium',
   }[variant];
 
   return (

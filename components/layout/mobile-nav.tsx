@@ -75,28 +75,28 @@ export function MobileNav({ onSearchClick }: MobileNavProps) {
           >
             <nav className="flex flex-col space-y-4">
               <Link
-                href="#tools"
+                href="/#tools"
                 onClick={closeMenu}
                 className="text-base font-semibold text-foreground hover:text-orange-500 py-1 transition-colors"
               >
                 All Tools
               </Link>
               <Link
-                href="#categories"
+                href="/#categories"
                 onClick={closeMenu}
                 className="text-base font-semibold text-foreground hover:text-orange-500 py-1 transition-colors"
               >
                 Categories
               </Link>
               <Link
-                href="#ai-vision"
+                href="/#ai-vision"
                 onClick={closeMenu}
                 className="text-base font-semibold text-foreground hover:text-orange-500 py-1 transition-colors"
               >
                 AI Vision
               </Link>
               <Link
-                href="#why-asap"
+                href="/#why-asap"
                 onClick={closeMenu}
                 className="text-base font-semibold text-foreground hover:text-orange-500 py-1 transition-colors"
               >
@@ -104,8 +104,8 @@ export function MobileNav({ onSearchClick }: MobileNavProps) {
               </Link>
 
               <div className="pt-4 border-t border-border space-y-3">
-                <a
-                  href="#tool-search"
+                <Link
+                  href="/#tool-search"
                   onClick={() => {
                     closeMenu();
                     if (onSearchClick) onSearchClick();
@@ -114,7 +114,7 @@ export function MobileNav({ onSearchClick }: MobileNavProps) {
                 >
                   <SearchIcon size={16} />
                   <span>Search Tools</span>
-                </a>
+                </Link>
 
                 <div>
                   <ThemeToggle showLabel className="py-3" />
