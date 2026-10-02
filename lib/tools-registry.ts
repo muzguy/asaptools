@@ -55,6 +55,28 @@ export const CATEGORIES: CategoryMeta[] = [
 
 export const TOOLS_REGISTRY: ToolItem[] = [
   {
+    id: 'code-playground',
+    name: 'ASAPTools CodeLab',
+    slug: '/tools/code-playground',
+    description: 'Run Python 3 code live in your browser for free via WebAssembly with custom stdin, real output, and zero setup.',
+    category: 'developer',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: [
+      'code playground',
+      'c compiler',
+      'cpp compiler',
+      'c++ online compiler',
+      'python online compiler',
+      'codelab',
+      'run code online',
+      'ide',
+      'sandbox',
+    ],
+    icon: 'terminal',
+  },
+  {
     id: 'json-formatter',
     name: 'JSON Formatter & Validator',
     slug: '/tools/json-formatter',
