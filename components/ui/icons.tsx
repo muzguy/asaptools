@@ -853,6 +853,8 @@ export function renderToolIcon(iconName: string, className?: string, size = 20) 
       return <VolumeIcon size={size} className={className} />;
     case 'video':
       return <VideoIcon size={size} className={className} />;
+    case 'qrcode':
+      return <QrCodeIcon size={size} className={className} />;
     default:
       return <ZapIcon size={size} className={className} />;
   }
@@ -1275,7 +1277,33 @@ export function VideoIcon({ size = 20, className = '', ...props }: IconProps) {
   );
 }
 
-
-
-
+export function QrCodeIcon({ size = 20, className = '', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <rect width="6" height="6" x="3" y="3" rx="1" />
+      <rect width="6" height="6" x="15" y="3" rx="1" />
+      <rect width="6" height="6" x="3" y="15" rx="1" />
+      <path d="M21 15h-3a1 1 0 0 0-1 1v3" />
+      <path d="M21 21v.01" />
+      <path d="M12 7v3a1 1 0 0 1-1 1H7" />
+      <path d="M3 12h.01" />
+      <path d="M12 3h.01" />
+      <path d="M12 16v.01" />
+      <path d="M16 12h1" />
+      <path d="M21 12v.01" />
+      <path d="M12 21v-2" />
+    </svg>
+  );
+}
 
