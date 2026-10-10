@@ -1,4 +1,4 @@
-export type ToolCategory = 'all' | 'developer' | 'text' | 'image' | 'pdf' | 'calculator';
+export type ToolCategory = 'all' | 'developer' | 'text' | 'image' | 'pdf' | 'calculator' | 'media';
 
 export interface ToolItem {
   id: string;
@@ -50,6 +50,12 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Calculators',
     description: 'Instant mathematical, financial, and conversion utilities.',
     icon: 'calculator',
+  },
+  {
+    id: 'media',
+    name: 'Media & Audio',
+    description: 'Convert GIFs, videos, and audio tracks locally with WebAssembly privacy.',
+    icon: 'film',
   },
 ];
 
@@ -267,5 +273,41 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     status: 'in-development',
     keywords: ['unit', 'converter', 'metric', 'imperial', 'length', 'weight', 'bytes'],
     icon: 'ruler',
+  },
+  {
+    id: 'gif-to-mp4',
+    name: 'GIF ↔ MP4 Converter',
+    slug: '/tools/gif-to-mp4',
+    description: 'Convert animated GIFs to MP4 videos or MP4 videos to GIFs.',
+    category: 'media',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: ['gif to mp4', 'mp4 to gif', 'convert gif', 'video to gif', 'animated gif to video', 'gif converter', 'mp4', 'h264', 'video', 'transparency'],
+    icon: 'film',
+  },
+  {
+    id: 'video-to-mp3',
+    name: 'Video to MP3 Converter',
+    slug: '/tools/video-to-mp3',
+    description: 'Extract pristine audio tracks from MP4, WebM, and other video files into high-fidelity MP3 files.',
+    category: 'media',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: ['video to mp3', 'extract audio', 'mp4 to mp3', 'webm to mp3', 'audio extractor', 'mp3 converter', 'bitrate'],
+    icon: 'music',
+  },
+  {
+    id: 'audio-converter',
+    name: 'Audio Format Converter',
+    slug: '/tools/audio-converter',
+    description: 'Convert between MP3, WAV, AAC/M4A, OGG, and FLAC formats with custom bitrates, sample rates, and quality presets.',
+    category: 'media',
+    badge: 'Popular',
+    isFeatured: true,
+    status: 'available',
+    keywords: ['audio converter', 'convert audio', 'mp3 to wav', 'wav to mp3', 'flac to mp3', 'm4a to mp3', 'ogg', 'sound converter'],
+    icon: 'volume',
   },
 ];

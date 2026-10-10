@@ -845,6 +845,14 @@ export function renderToolIcon(iconName: string, className?: string, size = 20) 
       return <RulerIcon size={size} className={className} />;
     case 'terminal':
       return <TerminalIcon size={size} className={className} />;
+    case 'film':
+      return <FilmIcon size={size} className={className} />;
+    case 'music':
+      return <MusicIcon size={size} className={className} />;
+    case 'volume':
+      return <VolumeIcon size={size} className={className} />;
+    case 'video':
+      return <VideoIcon size={size} className={className} />;
     default:
       return <ZapIcon size={size} className={className} />;
   }
@@ -1178,6 +1186,95 @@ export function InfoIcon({ size = 20, className = '', ...props }: IconProps) {
     </svg>
   );
 }
+
+export function FilmIcon({ size = 20, className = '', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M7 3v18" />
+      <path d="M17 3v18" />
+      <path d="M3 7.5h4" />
+      <path d="M3 12h18" />
+      <path d="M3 16.5h4" />
+      <path d="M17 16.5h4" />
+      <path d="M17 7.5h4" />
+    </svg>
+  );
+}
+
+export function MusicIcon({ size = 20, className = '', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+export function VolumeIcon({ size = 20, className = '', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </svg>
+  );
+}
+
+export function VideoIcon({ size = 20, className = '', ...props }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <path d="m22 8-6 4 6 4V8Z" />
+      <rect width="14" height="12" x="2" y="6" rx="2" />
+    </svg>
+  );
+}
+
 
 
 
