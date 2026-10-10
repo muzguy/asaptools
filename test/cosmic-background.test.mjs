@@ -205,15 +205,15 @@ describe('Cosmic Background - Light Mode Geometric Texture System', () => {
       'triangle',
       'cluster-cross',
     ];
-    const validColors = ['blue', 'lavender', 'peach', 'orange', 'slate'];
+    const validColors = ['blue', 'cyan', 'lavender', 'peach', 'orange', 'slate'];
 
     for (const el of field1) {
       assert.ok(el.x >= 0 && el.x <= 1, 'x in [0, 1]');
       assert.ok(el.y >= 0 && el.y <= 1, 'y in [0, 1]');
       assert.ok(validTypes.includes(el.type), `valid shape type: ${el.type}`);
       assert.ok(validColors.includes(el.color), `valid color: ${el.color}`);
-      assert.ok(el.size >= 2 && el.size <= 40, 'valid size bounds');
-      assert.ok(el.baseAlpha >= 0.05 && el.baseAlpha <= 0.35, 'subtle alpha bounds');
+      assert.ok(el.size >= 2 && el.size <= 70, 'valid size bounds');
+      assert.ok(el.baseAlpha >= 0.15 && el.baseAlpha <= 0.45, 'visible but subtle alpha bounds');
 
       if (el.connectTargetIndex !== undefined) {
         assert.ok(
@@ -226,12 +226,14 @@ describe('Cosmic Background - Light Mode Geometric Texture System', () => {
 
   test('getPastelRgb returns distinct curated pastel RGB values', () => {
     const blue = getPastelRgb('blue');
+    const cyan = getPastelRgb('cyan');
     const lavender = getPastelRgb('lavender');
     const peach = getPastelRgb('peach');
     const orange = getPastelRgb('orange');
     const slate = getPastelRgb('slate');
 
     assert.deepEqual(blue, [56, 189, 248]);
+    assert.deepEqual(cyan, [6, 182, 212]);
     assert.deepEqual(lavender, [192, 132, 252]);
     assert.deepEqual(peach, [251, 146, 60]);
     assert.deepEqual(orange, [249, 115, 22]);

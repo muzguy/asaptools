@@ -59,6 +59,34 @@ export const CATEGORIES: CategoryMeta[] = [
   },
 ];
 
+/**
+ * Prioritized Popular Tools featured at the top of the homepage.
+ * Ordered by high user demand: PDF tools, Image tools, Media converters, and QR code generator.
+ */
+export const POPULAR_TOOL_IDS = [
+  'pdf-compressor',
+  'image-compressor',
+  'image-resizer',
+  'images-to-pdf',
+  'pdf-to-images',
+  'gif-to-mp4',
+  'video-to-mp3',
+  'qr-code-generator',
+] as const;
+
+/**
+ * Developer & text utilities displayed in a dedicated section lower on the homepage.
+ */
+export const DEVELOPER_TEXT_TOOL_IDS = [
+  'code-playground',
+  'json-formatter',
+  'word-counter',
+  'case-converter',
+  'text-cleaner',
+  'base64-converter',
+  'uuid-generator',
+] as const;
+
 export const TOOLS_REGISTRY: ToolItem[] = [
   {
     id: 'code-playground',
@@ -67,7 +95,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Run Python 3 code live in your browser for free via WebAssembly with custom stdin, real output, and zero setup.',
     category: 'developer',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: [
       'code playground',
@@ -89,7 +117,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Prettify, validate, and debug messy JSON with syntax highlighting and instant error detection.',
     category: 'developer',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['json', 'formatter', 'beautify', 'validator', 'lint', 'minify', 'parse'],
     icon: 'code',
@@ -124,7 +152,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Safely encode and decode strings and media to and from Base64 representations.',
     category: 'developer',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'in-development',
     keywords: ['base64', 'encode', 'decode', 'string', 'binary', 'url safe'],
     icon: 'binary',
@@ -148,7 +176,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Real-time text statistics including word count, characters, reading time, and paragraph count.',
     category: 'text',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['word count', 'character count', 'reading time', 'text statistics', 'editor'],
     icon: 'text',
@@ -160,7 +188,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Instantly convert text to camelCase, snake_case, kebab-case, UPPERCASE, and title case.',
     category: 'text',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['case', 'camelcase', 'snake_case', 'uppercase', 'lowercase', 'slug', 'titlecase', 'pascalcase'],
     icon: 'textCase',
@@ -172,7 +200,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Remove redundant whitespace, extra spaces, empty lines, and clean text instantly.',
     category: 'text',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['text cleaner', 'trim whitespace', 'remove empty lines', 'normalize spaces', 'clean text', 'format text'],
     icon: 'text',
@@ -208,7 +236,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Convert images between PNG, JPEG/JPG, and WebP instantly with smart transparency handling.',
     category: 'image',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['image', 'convert', 'format converter', 'webp', 'png', 'jpg', 'jpeg', 'export', 'transparency'],
     icon: 'imageRotate',
@@ -220,7 +248,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Merge multiple PDF documents into one or split and extract custom page ranges with zero server uploads.',
     category: 'pdf',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['pdf', 'merge', 'split', 'combine', 'extract pages', 'reorder pdf', 'join', 'documents'],
     icon: 'pdf',
@@ -268,7 +296,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Convert Word documents (.docx, .doc) to high-fidelity PDF files preserving fonts, tables, and margins.',
     category: 'pdf',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['word to pdf', 'convert docx to pdf', 'doc to pdf', 'docx to pdf converter', 'office to pdf', 'microsoft word to pdf'],
     icon: 'wordToPdf',
@@ -280,7 +308,7 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Calculate percentage increases, discounts, tips, and relative differences effortlessly.',
     category: 'calculator',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'in-development',
     keywords: ['percentage', 'calculator', 'discount', 'increase', 'margin', 'math'],
     icon: 'calculator',
@@ -328,9 +356,28 @@ export const TOOLS_REGISTRY: ToolItem[] = [
     description: 'Convert between MP3, WAV, AAC/M4A, OGG, and FLAC formats with custom bitrates, sample rates, and quality presets.',
     category: 'media',
     badge: 'Popular',
-    isFeatured: true,
+    isFeatured: false,
     status: 'available',
     keywords: ['audio converter', 'convert audio', 'mp3 to wav', 'wav to mp3', 'flac to mp3', 'm4a to mp3', 'ogg', 'sound converter'],
     icon: 'volume',
   },
 ];
+
+/**
+ * Returns the popular tools in the exact prioritized order.
+ * Skips missing or non-functional tools.
+ */
+export function getPopularTools(): ToolItem[] {
+  return POPULAR_TOOL_IDS
+    .map((id) => TOOLS_REGISTRY.find((tool) => tool.id === id))
+    .filter((tool): tool is ToolItem => Boolean(tool && tool.status === 'available'));
+}
+
+/**
+ * Returns the developer and text utilities.
+ */
+export function getDeveloperTextTools(): ToolItem[] {
+  return DEVELOPER_TEXT_TOOL_IDS
+    .map((id) => TOOLS_REGISTRY.find((tool) => tool.id === id))
+    .filter((tool): tool is ToolItem => Boolean(tool));
+}

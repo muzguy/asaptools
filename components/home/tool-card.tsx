@@ -60,7 +60,7 @@ export function ToolCard({ tool, onSelect }: ToolCardProps) {
     </>
   );
 
-  const sharedClassName = `group relative flex flex-col justify-between p-5 rounded-2xl border transition-all duration-200 text-left bg-card text-card-foreground outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer touch-manipulation w-full ${
+  const sharedClassName = `group relative flex flex-col justify-between h-full p-5 rounded-2xl border transition-all duration-200 text-left bg-card text-card-foreground outline-none focus-visible:ring-2 focus-visible:ring-orange-500 cursor-pointer touch-manipulation w-full ${
     isAvailable
       ? 'border-border hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/5 hover:-translate-y-0.5'
       : 'border-border/80 hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md'

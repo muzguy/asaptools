@@ -6,6 +6,8 @@ import {
   CATEGORIES,
   ToolItem,
   ToolCategory,
+  getPopularTools,
+  getDeveloperTextTools,
 } from '@/lib/tools-registry';
 import { ToolCard } from '@/components/home/tool-card';
 import { SearchIcon, CloseIcon, renderToolIcon, ShieldIcon, ZapIcon } from '@/components/ui/icons';
@@ -15,6 +17,7 @@ export function ToolExplorer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ToolCategory>('all');
   const [activeModalTool, setActiveModalTool] = useState<ToolItem | null>(null);
+  const [showAllPopular, setShowAllPopular] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcut: '/' or 'Cmd/Ctrl + K' to focus search
@@ -74,10 +77,20 @@ export function ToolExplorer() {
     });
   }, [searchQuery, selectedCategory]);
 
-  // Featured tools (top flagship tools)
-  const featuredTools = useMemo(() => {
-    return TOOLS_REGISTRY.filter((t) => t.isFeatured);
+  // Popular high-demand tools in prioritized order
+  const popularTools = useMemo(() => {
+    return getPopularTools();
   }, []);
+
+  // Developer and text utilities
+  const devTextTools = useMemo(() => {
+    return getDeveloperTextTools();
+  }, []);
+
+  // Show approximately 6 popular tools initially
+  const displayedPopularTools = useMemo(() => {
+    return showAllPopular ? popularTools : popularTools.slice(0, 6);
+  }, [popularTools, showAllPopular]);
 
   const isDefaultView = searchQuery === '' && selectedCategory === 'all';
 
@@ -158,22 +171,96 @@ export function ToolExplorer() {
         {/* Dynamic Display */}
         {isDefaultView ? (
           <div className="space-y-16">
-            {/* Section 1: Popular / Featured Tools */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
+            {/* Section 1: Popular Tools (Prioritized everyday high-demand tools) */}
+            <div id="popular-tools">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-                    Popular Utilities
-                  </h2>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+                      Popular Tools
+                    </h2>
+                    <Badge variant="brand">Most Popular</Badge>
+                  </div>
                   <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    The most requested digital tools, optimized for everyday workflows.
+                    Everyday high-demand tools for PDFs, image optimization, media conversion, and QR codes.
                   </p>
                 </div>
-                <Badge variant="brand">High Priority</Badge>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {popularTools.length > 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllPopular((prev) => !prev)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-foreground transition-colors cursor-pointer touch-manipulation"
+                    >
+                      {showAllPopular ? (
+                        <span>Show fewer (6) ↑</span>
+                      ) : (
+                        <span>Show all {popularTools.length} tools ↓</span>
+                      )}
+                    </button>
+                  )}
+                  <a
+                    href="#directory"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                  >
+                    View all tools ↓
+                  </a>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {featuredTools.map((tool) => (
+                {displayedPopularTools.map((tool) => (
+                  <ToolCard
+                    key={tool.id}
+                    tool={tool}
+                    onSelect={(t) => setActiveModalTool(t)}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-3.5 border-t border-border/60 text-xs">
+                <span className="text-muted-foreground">
+                  Showing {displayedPopularTools.length} of {popularTools.length} popular utilities
+                </span>
+                <div className="flex items-center gap-3">
+                  {popularTools.length > 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllPopular((prev) => !prev)}
+                      className="font-semibold text-foreground hover:text-orange-600 dark:hover:text-orange-400 cursor-pointer touch-manipulation"
+                    >
+                      {showAllPopular ? 'Show top 6' : `Show all ${popularTools.length} popular tools`}
+                    </button>
+                  )}
+                  <a
+                    href="#directory"
+                    className="font-semibold text-orange-600 dark:text-orange-400 hover:underline"
+                  >
+                    View complete directory →
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Developer & Text Utilities */}
+            <div id="dev-text-tools">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+                      Developer & Text Utilities
+                    </h2>
+                    <Badge variant="muted">Code & Content</Badge>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    In-browser Python code execution, JSON formatting, word counting, and clean text manipulation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                {devTextTools.map((tool) => (
                   <ToolCard
                     key={tool.id}
                     tool={tool}
@@ -183,15 +270,20 @@ export function ToolExplorer() {
               </div>
             </div>
 
-            {/* Section 2: Tool Categories Overview */}
-            <div id="categories" className="scroll-mt-20">
-              <div className="mb-6">
-                <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-                  Browse by Category
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Discover focused suites organized by digital workflow.
-                </p>
+            {/* Section 3: Tool Categories & Complete Directory */}
+            <div id="directory" className="scroll-mt-20">
+              <div id="categories" className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
+                    Browse by Category
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                    Discover focused suites organized by digital workflow.
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-muted-foreground bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 rounded-full hidden sm:inline">
+                  {TOOLS_REGISTRY.length} tools available
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">

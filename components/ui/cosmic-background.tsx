@@ -411,7 +411,7 @@ export function CosmicBackground() {
         }`}
         style={{
           background:
-            'radial-gradient(ellipse 130% 110% at 50% -10%, #ffffff 0%, #f8fafc 52%, #f1f5f9 100%)',
+            'radial-gradient(ellipse 135% 115% at 50% -5%, #ffffff 0%, #f8fafc 48%, #f1f5f9 100%)',
         }}
       />
 
@@ -433,8 +433,9 @@ export function CosmicBackground() {
         }`}
         style={{
           background: `
-            radial-gradient(circle 720px at 20% 20%, rgba(186, 230, 253, 0.22) 0%, transparent 65%),
-            radial-gradient(circle 620px at 80% 30%, rgba(233, 213, 255, 0.16) 0%, transparent 65%)
+            radial-gradient(circle 760px at 15% 18%, rgba(6, 182, 212, 0.12) 0%, transparent 68%),
+            radial-gradient(circle 820px at 85% 22%, rgba(192, 132, 252, 0.13) 0%, transparent 68%),
+            radial-gradient(circle 680px at 50% 55%, rgba(249, 115, 22, 0.08) 0%, transparent 65%)
           `,
         }}
       />
@@ -457,8 +458,26 @@ export function CosmicBackground() {
         }`}
         style={{
           background: `
-            radial-gradient(circle 820px at 50% 85%, rgba(226, 232, 240, 0.35) 0%, transparent 70%)
+            radial-gradient(circle 880px at 20% 78%, rgba(56, 189, 248, 0.12) 0%, transparent 70%),
+            radial-gradient(circle 720px at 82% 82%, rgba(168, 85, 247, 0.10) 0%, transparent 65%),
+            radial-gradient(circle 620px at 50% 6%, rgba(251, 146, 60, 0.075) 0%, transparent 60%)
           `,
+        }}
+      />
+
+      {/* Layer 3.5: Light-Mode Dotted Tech Blueprint Canvas */}
+      <div
+        className={`absolute inset-0 transition-opacity duration-700 ease-in-out pointer-events-none ${
+          isDark ? 'opacity-0' : 'opacity-100'
+        }`}
+        style={{
+          backgroundImage:
+            'radial-gradient(rgba(148, 163, 184, 0.22) 1.25px, transparent 1.25px)',
+          backgroundSize: '32px 32px',
+          maskImage:
+            'radial-gradient(ellipse 92% 88% at 50% 45%, black 45%, rgba(0, 0, 0, 0.4) 80%, transparent 100%)',
+          WebkitMaskImage:
+            'radial-gradient(ellipse 92% 88% at 50% 45%, black 45%, rgba(0, 0, 0, 0.4) 80%, transparent 100%)',
         }}
       />
 

@@ -285,7 +285,7 @@ export type GeometricShapeType =
   | 'triangle'
   | 'cluster-cross';
 
-export type PastelPalette = 'blue' | 'lavender' | 'peach' | 'orange' | 'slate';
+export type PastelPalette = 'blue' | 'lavender' | 'peach' | 'orange' | 'slate' | 'cyan';
 
 export interface GeometricElement {
   id: number;
@@ -294,7 +294,7 @@ export interface GeometricElement {
   type: GeometricShapeType;
   size: number; // Size in pixels
   color: PastelPalette;
-  baseAlpha: number; // Very low opacity (0.10 to 0.25)
+  baseAlpha: number; // Clearly visible low opacity (0.20 to 0.38)
   rotation: number; // Radians
   rotationSpeed: number; // Radians / sec
   vx: number; // Normalized horizontal velocity / sec
@@ -312,6 +312,8 @@ export function getPastelRgb(color: PastelPalette): [number, number, number] {
   switch (color) {
     case 'blue':
       return [56, 189, 248]; // Sky blue
+    case 'cyan':
+      return [6, 182, 212]; // Rich cyan
     case 'lavender':
       return [192, 132, 252]; // Soft lavender
     case 'peach':
@@ -326,6 +328,8 @@ export function getPastelRgb(color: PastelPalette): [number, number, number] {
 
 /**
  * Generate a deterministic field of delicate geometric shapes for Light Mode.
+ * Shapes are distributed across the entire page (hero, middle cards, lower sections)
+ * using stratified sampling across 12 screen zones to prevent clustering.
  */
 export function generateGeometricField(
   count: number,
@@ -336,77 +340,97 @@ export function generateGeometricField(
 
   const types: GeometricShapeType[] = [
     'circle',
-    'circle',
     'concentric-ring',
-    'dot',
-    'dot',
     'square',
     'rounded-square',
     'diamond',
-    'triangle', // sparingly included
+    'triangle',
+    'dot',
     'cluster-cross',
   ];
 
-  const colors: PastelPalette[] = ['blue', 'lavender', 'peach', 'orange', 'slate'];
+  const colors: PastelPalette[] = ['blue', 'cyan', 'lavender', 'peach', 'orange', 'slate'];
+
+  // 12-zone stratified grid (4 columns x 3 rows) ensures balanced coverage across:
+  // - Hero / top search (Row 0: y 0.05 - 0.33)
+  // - Featured & Popular tools (Row 1: y 0.35 - 0.65)
+  // - Lower directory & developer tools (Row 2: y 0.68 - 0.95)
+  const cols = 4;
+  const rows = 3;
+  const totalZones = cols * rows;
 
   for (let i = 0; i < count; i++) {
     const type = types[Math.floor(prng() * types.length)];
     const color = colors[Math.floor(prng() * colors.length)];
 
-    // Vary size depending on shape type
+    // Stratified spatial distribution with deterministic jitter
+    const zoneIdx = i % totalZones;
+    const zoneCol = zoneIdx % cols;
+    const zoneRow = Math.floor(zoneIdx / cols);
+
+    const x = Math.min(0.96, Math.max(0.04, (zoneCol + 0.12 + prng() * 0.76) / cols));
+    const y = Math.min(0.96, Math.max(0.04, (zoneRow + 0.12 + prng() * 0.76) / rows));
+
+    // Varied sizes: from small accent markers to medium and large architectural frames
     let size: number;
     let baseAlpha: number;
     let hasGlow = false;
-    let glowRadius = 40;
+    let glowRadius = 45;
 
     switch (type) {
       case 'dot':
-        size = 3 + prng() * 3; // 3 - 6px
-        baseAlpha = 0.16 + prng() * 0.10; // 0.16 - 0.26
+        size = 5 + prng() * 5; // 5 - 10px
+        baseAlpha = 0.24 + prng() * 0.12; // 0.24 - 0.36
         break;
-      case 'concentric-ring':
-        size = 18 + prng() * 12; // 18 - 30px
-        baseAlpha = 0.12 + prng() * 0.08; // 0.12 - 0.20
-        hasGlow = prng() < 0.4;
-        glowRadius = 38 + prng() * 25;
-        break;
-      case 'circle':
-        size = 12 + prng() * 14; // 12 - 26px
-        baseAlpha = 0.12 + prng() * 0.09; // 0.12 - 0.21
-        hasGlow = prng() < 0.25;
-        glowRadius = 35 + prng() * 25;
+      case 'cluster-cross':
+        size = 10 + prng() * 8; // 10 - 18px
+        baseAlpha = 0.22 + prng() * 0.10; // 0.22 - 0.32
         break;
       case 'triangle':
-        size = 10 + prng() * 6; // 10 - 16px (delicate, spare)
-        baseAlpha = 0.11 + prng() * 0.08; // 0.11 - 0.19
+        size = 16 + prng() * 26; // 16 - 42px
+        baseAlpha = 0.20 + prng() * 0.12; // 0.20 - 0.32
+        hasGlow = prng() < 0.35;
+        glowRadius = 35 + prng() * 25;
         break;
       case 'diamond':
-        size = 11 + prng() * 9; // 11 - 20px
-        baseAlpha = 0.12 + prng() * 0.08;
+        size = 18 + prng() * 32; // 18 - 50px
+        baseAlpha = 0.22 + prng() * 0.12; // 0.22 - 0.34
+        hasGlow = prng() < 0.40;
+        glowRadius = 40 + prng() * 30;
         break;
       case 'square':
       case 'rounded-square':
-        size = 9 + prng() * 8; // 9 - 17px
-        baseAlpha = 0.11 + prng() * 0.09;
+        size = 18 + prng() * 38; // 18 - 56px
+        baseAlpha = 0.20 + prng() * 0.12; // 0.20 - 0.32
+        hasGlow = prng() < 0.35;
+        glowRadius = 42 + prng() * 28;
         break;
-      case 'cluster-cross':
+      case 'concentric-ring':
+        size = 28 + prng() * 36; // 28 - 64px
+        baseAlpha = 0.22 + prng() * 0.12; // 0.22 - 0.34
+        hasGlow = prng() < 0.50;
+        glowRadius = 45 + prng() * 35;
+        break;
+      case 'circle':
       default:
-        size = 8 + prng() * 5; // 8 - 13px
-        baseAlpha = 0.14 + prng() * 0.10;
+        size = 18 + prng() * 34; // 18 - 52px
+        baseAlpha = 0.20 + prng() * 0.12; // 0.20 - 0.32
+        hasGlow = prng() < 0.30;
+        glowRadius = 38 + prng() * 25;
         break;
     }
 
-    // Subtle drift and slow rotation
-    const vx = (prng() - 0.5) * 0.004; // Very slow drift
-    const vy = (prng() - 0.5) * 0.003;
+    // Subtle drift and gentle floating rotation
+    const vx = (prng() - 0.5) * 0.0035;
+    const vy = (prng() - 0.5) * 0.0028;
     const rotation = prng() * Math.PI * 2;
-    const rotationSpeed = (prng() - 0.5) * 0.05; // ~0.025 rad/s
-    const parallaxFactor = 0.15 + prng() * 0.30;
+    const rotationSpeed = (prng() - 0.5) * 0.045; // ~0.02 rad/s
+    const parallaxFactor = 0.18 + prng() * 0.28;
 
     elements.push({
       id: i,
-      x: prng(),
-      y: prng(),
+      x,
+      y,
       type,
       size,
       color,
@@ -421,11 +445,10 @@ export function generateGeometricField(
     });
   }
 
-  // Connect ~15-20% of elements to nearby geometric neighbors for constellation lines
-  const connectCount = Math.floor(count * 0.2);
+  // Connect ~22% of elements to nearby geometric neighbors for constellation lines
+  const connectCount = Math.floor(count * 0.22);
   for (let c = 0; c < connectCount; c++) {
-    const sourceIdx = (c * 4 + 1) % count;
-    // Find closest neighbor in normalized space
+    const sourceIdx = (c * 3 + 1) % count;
     let closestIdx = -1;
     let closestDist = Infinity;
     const source = elements[sourceIdx];
@@ -434,7 +457,7 @@ export function generateGeometricField(
       if (j === sourceIdx) continue;
       const target = elements[j];
       const dist = Math.hypot(target.x - source.x, target.y - source.y);
-      if (dist > 0.05 && dist < 0.22 && dist < closestDist) {
+      if (dist > 0.04 && dist < 0.24 && dist < closestDist) {
         closestDist = dist;
         closestIdx = j;
       }
@@ -513,15 +536,15 @@ export function renderGeometricElements(
     const dist = Math.hypot(dx, dy);
 
     // Only draw if within sensible on-screen distance (avoid wrapping artifacts across edges)
-    if (dist >= 45 && dist <= 240) {
-      const lineAlpha = Math.min(el.baseAlpha, target.baseAlpha) * 0.42 * lightModeFactor;
+    if (dist >= 40 && dist <= 260) {
+      const lineAlpha = Math.min(el.baseAlpha, target.baseAlpha) * 0.82 * lightModeFactor;
       const rgb = getPastelRgb(el.color);
 
       ctx.save();
       ctx.strokeStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${lineAlpha})`;
-      ctx.lineWidth = 0.85;
+      ctx.lineWidth = 1.05;
       if (typeof ctx.setLineDash === 'function') {
-        ctx.setLineDash([3, 4]);
+        ctx.setLineDash([4, 4]);
       }
       ctx.beginPath();
       ctx.moveTo(x1, y1);
@@ -550,10 +573,11 @@ export function renderGeometricElements(
     const rgb = getPastelRgb(el.color);
     const rgbStr = `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
 
-    // Soft subtle radial glow (if present)
+    // Soft subtle radial glow on accent nodes
     if (el.hasGlow) {
       const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, el.glowRadius);
-      glow.addColorStop(0, `rgba(${rgbStr}, ${alpha * 0.32})`);
+      glow.addColorStop(0, `rgba(${rgbStr}, ${alpha * 0.42})`);
+      glow.addColorStop(0.5, `rgba(${rgbStr}, ${alpha * 0.15})`);
       glow.addColorStop(1, `rgba(${rgbStr}, 0)`);
       ctx.fillStyle = glow;
       ctx.beginPath();
@@ -568,16 +592,16 @@ export function renderGeometricElements(
     }
 
     ctx.strokeStyle = `rgba(${rgbStr}, ${alpha})`;
-    ctx.fillStyle = `rgba(${rgbStr}, ${alpha})`;
-    ctx.lineWidth = 1;
-
+    ctx.fillStyle = `rgba(${rgbStr}, ${alpha * 0.12})`;
     const s = el.size;
     const hs = s / 2;
+    ctx.lineWidth = s > 40 ? 1.45 : s > 20 ? 1.25 : 1.1;
 
     switch (el.type) {
       case 'circle':
         ctx.beginPath();
         ctx.arc(0, 0, hs, 0, Math.PI * 2);
+        if (s > 20) ctx.fill();
         ctx.stroke();
         break;
 
@@ -586,28 +610,34 @@ export function renderGeometricElements(
         ctx.arc(0, 0, hs, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(0, 0, hs * 0.45, 0, Math.PI * 2);
+        ctx.arc(0, 0, hs * 0.48, 0, Math.PI * 2);
+        if (s > 24) ctx.fill();
         ctx.stroke();
         break;
 
       case 'dot':
+        ctx.fillStyle = `rgba(${rgbStr}, ${alpha * 0.85})`;
         ctx.beginPath();
-        ctx.arc(0, 0, Math.max(1.5, hs * 0.6), 0, Math.PI * 2);
+        ctx.arc(0, 0, Math.max(2, hs * 0.5), 0, Math.PI * 2);
         ctx.fill();
         break;
 
       case 'square':
-        ctx.strokeRect(-hs, -hs, s, s);
+        ctx.beginPath();
+        ctx.rect(-hs, -hs, s, s);
+        if (s > 20) ctx.fill();
+        ctx.stroke();
         break;
 
       case 'rounded-square': {
-        const r = Math.min(3.5, s * 0.22);
+        const r = Math.min(6, s * 0.22);
         ctx.beginPath();
         if (typeof ctx.roundRect === 'function') {
           ctx.roundRect(-hs, -hs, s, s, r);
         } else {
           ctx.rect(-hs, -hs, s, s);
         }
+        if (s > 20) ctx.fill();
         ctx.stroke();
         break;
       }
@@ -619,6 +649,7 @@ export function renderGeometricElements(
         ctx.lineTo(0, hs * 1.15);
         ctx.lineTo(-hs * 0.85, 0);
         ctx.closePath();
+        if (s > 20) ctx.fill();
         ctx.stroke();
         break;
 
@@ -628,11 +659,12 @@ export function renderGeometricElements(
         ctx.lineTo(hs * 0.866, hs * 0.5);
         ctx.lineTo(-hs * 0.866, hs * 0.5);
         ctx.closePath();
+        if (s > 20) ctx.fill();
         ctx.stroke();
         break;
 
       case 'cluster-cross':
-        ctx.lineWidth = 1.1;
+        ctx.lineWidth = 1.25;
         ctx.beginPath();
         ctx.moveTo(-hs, 0);
         ctx.lineTo(hs, 0);
