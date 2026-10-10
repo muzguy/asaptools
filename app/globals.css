@@ -45,3 +45,43 @@ body {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Cosmic Background Nebula Atmosphere Keyframes */
+@keyframes cosmic-nebula-float-1 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(-1.5%, -1.2%, 0) scale(1.05);
+    opacity: 1;
+  }
+}
+
+@keyframes cosmic-nebula-float-2 {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1.04);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate3d(1.2%, 1.5%, 0) scale(0.97);
+    opacity: 0.75;
+  }
+}
+
+.cosmic-nebula-layer-1 {
+  animation: cosmic-nebula-float-1 26s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.cosmic-nebula-layer-2 {
+  animation: cosmic-nebula-float-2 34s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cosmic-nebula-layer-1,
+  .cosmic-nebula-layer-2 {
+    animation: none !important;
+  }
+}
+

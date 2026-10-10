@@ -4,6 +4,7 @@ import './globals.css';
 import { Navbar } from '@/components/layout/navbar';
 import { Footer } from '@/components/layout/footer';
 import { ThemeProvider } from '@/components/theme/theme-context';
+import { CosmicBackground } from '@/components/ui/cosmic-background';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -101,11 +102,14 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col bg-background text-foreground relative selection:bg-orange-500/20 selection:text-orange-950 dark:selection:text-orange-200">
         <ThemeProvider>
+          <CosmicBackground />
           <Navbar />
-          <main className="flex-1 w-full overflow-x-clip">{children}</main>
-          <Footer />
+          <main className="flex-1 w-full overflow-x-clip relative z-10">{children}</main>
+          <div className="relative z-10">
+            <Footer />
+          </div>
         </ThemeProvider>
       </body>
     </html>
