@@ -104,3 +104,57 @@ body {
     linear-gradient(-45deg, transparent 75%, #27272a 75%);
 }
 
+/* Resume Builder Print Styles */
+@media print {
+  @page {
+    size: auto;
+    margin: 8mm 10mm;
+  }
+
+  /* Hide website layout elements during print */
+  header,
+  footer,
+  nav,
+  .no-print,
+  #cosmic-background {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Make print sheet take over cleanly */
+  .resume-print-root,
+  .resume-print-root * {
+    visibility: visible;
+  }
+
+  #resume-preview-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Prevent awkward page breaks in the middle of a role or education item */
+  .resume-section-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .resume-item-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+
