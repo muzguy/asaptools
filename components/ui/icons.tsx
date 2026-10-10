@@ -855,6 +855,10 @@ export function renderToolIcon(iconName: string, className?: string, size = 20) 
       return <VideoIcon size={size} className={className} />;
     case 'qrcode':
       return <QrCodeIcon size={size} className={className} />;
+    case 'scissors':
+      return <ScissorsIcon size={size} className={className} />;
+    case 'sparkles':
+      return <SparklesIcon size={size} className={className} />;
     default:
       return <ZapIcon size={size} className={className} />;
   }
